@@ -1,24 +1,22 @@
 package server
 
 import (
-	"net/http"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strings"
 )
 
-type SemanticTuple struct {
-	Key string
-	Value string
-}
-
 type Server struct {
-	values map[string]string
+	values  map[string]string
+	peer    string
+	running bool
 }
 
 func New() *Server {
 	return &Server{
-		values: make(map[string]string),
+		values:  make(map[string]string),
+		peer:    "",
 	}
 }
 
@@ -26,29 +24,59 @@ type GoakRequest struct {
 	*http.Request
 }
 
-func(r *GoakRequest) fetchValue() string {
+func (r *GoakRequest) fetchValue() string {
 	body, _ := ioutil.ReadAll(r.Body)
 	return string(body)
 }
 
-func(r *GoakRequest) fetchKey() string {
+func (r *GoakRequest) fetchKey() string {
 	uri := r.RequestURI
 	uriParts := strings.Split(uri, "/")
-	key := uriParts[len(uriParts) - 1]
+	key := uriParts[len(uriParts)-1]
 	return key
+}
+
+func (server *Server) AddPeer(peer string) {
+	server.peer = peer
+}
+
+func (server *Server) hasPeer() bool {
+	return server.peer != ""
+}
+
+func (server *Server) Listen(port string) {
+	http.ListenAndServe(port, server.Handler())
 }
 
 func (server *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, request *http.Request) {
+
+	mux.HandleFunc("/heartbeat", func(w http.ResponseWriter, request *http.Request) {
+		w.WriteHeader(200)
+		fmt.Fprintf(w, "OK")
+	})
+
+	mux.HandleFunc("/data/", func(w http.ResponseWriter, request *http.Request) {
 		r := GoakRequest{request}
 		var value string
 
 		switch r.Method {
 		case "GET":
-			value = server.values[r.fetchKey()]
+			key := r.fetchKey()
+			value = server.values[key]
+
 			if value == "" {
-				w.WriteHeader(404)
+				if server.hasPeer() {
+					response, _ := http.Get(server.peer + "/data/" + key)
+					if response.StatusCode == 200 {
+						body, _ := ioutil.ReadAll(response.Body)
+						value = string(body)
+					} else {
+						w.WriteHeader(404)
+					}
+				} else {
+					w.WriteHeader(404)
+				}
 			} else {
 				w.WriteHeader(200)
 			}
