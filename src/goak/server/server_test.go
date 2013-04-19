@@ -2,70 +2,87 @@ package server
 
 import (
 	"github.com/bmizerany/assert"
-	"github.com/drewolson/testflight"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-func withServer(f func(*testflight.Requester)) {
+func httpRequest(method string, url string, data string) (int, string) {
+	request, _ := http.NewRequest(method, url, strings.NewReader(data))
+	client := http.Client{}
+	response, _ := client.Do(request)
+	rawBody, _ := ioutil.ReadAll(response.Body)
+
+	return response.StatusCode, string(rawBody)
+}
+
+type TestNode struct {
+	*httptest.Server
+	node *Server
+}
+
+func testServer() *TestNode {
 	goakServer := New()
-	testflight.WithServer(goakServer.Handler(), f)
+	return &TestNode{httptest.NewServer(goakServer.Handler()), goakServer}
 }
 
 func TestAddAKey(t *testing.T) {
-	withServer(func(r *testflight.Requester) {
-		response := r.Put("/data/mykey", testflight.FORM_ENCODED, "myvalue")
-		assert.Equal(t, 201, response.StatusCode)
-		assert.Equal(t, "myvalue", response.Body)
-	})
+	server := testServer()
+	defer server.Close()
+
+	statusCode, body := httpRequest("PUT", server.URL+"/data/mykey", "bar")
+
+	assert.Equal(t, 201, statusCode)
+	assert.Equal(t, "bar", body)
 }
 
 func TestFetchKey(t *testing.T) {
-	withServer(func(r *testflight.Requester) {
-		r.Put("/data/mykey", testflight.FORM_ENCODED, "myvalue")
-		r.Put("/data/notmykey", testflight.FORM_ENCODED, "notmyvalue")
+	server := testServer()
+	defer server.Close()
 
-		response := r.Get("/data/mykey")
-		assert.Equal(t, 200, response.StatusCode)
-		assert.Equal(t, "myvalue", response.Body)
-	})
+	httpRequest("PUT", server.URL+"/data/mykey", "bar")
+	statusCode, body := httpRequest("GET", server.URL+"/data/mykey", "bar")
+
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, "bar", body)
 }
 
 func TestFetchUnknownKey(t *testing.T) {
-	withServer(func(r *testflight.Requester) {
-		response := r.Get("/data/badkey")
-		assert.Equal(t, 404, response.StatusCode)
-	})
+	server := testServer()
+	defer server.Close()
+
+	statusCode, _ := httpRequest("GET", server.URL+"/data/mykey", "bar")
+
+	assert.Equal(t, 404, statusCode)
 }
 
 func TestUpdateKey(t *testing.T) {
-	withServer(func(r *testflight.Requester) {
-		r.Put("/data/mykey", testflight.FORM_ENCODED, "myvalue")
-		response := r.Put("/data/mykey", testflight.FORM_ENCODED, "mysecondvalue")
-		assert.Equal(t, 200, response.StatusCode)
-		assert.Equal(t, "mysecondvalue", response.Body)
+	server := testServer()
+	defer server.Close()
 
-		response = r.Get("/data/mykey")
-		assert.Equal(t, "mysecondvalue", response.Body)
-	})
+	httpRequest("PUT", server.URL+"/data/mykey", "bar")
+	httpRequest("PUT", server.URL+"/data/mykey", "baz")
+	statusCode, body := httpRequest("GET", server.URL+"/data/mykey", "")
+
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, "baz", body)
 }
 
 func TestFetchesAcrossNodes(t *testing.T) {
-	node1 := New()
-	node2 := New()
-	node1.AddPeer("http://localhost:9191")
-	node2.AddPeer("http://localhost:9090")
-	go http.ListenAndServe(":9090", node1.Handler())
-	go http.ListenAndServe(":9191", node2.Handler())
-	request, _ := http.NewRequest("PUT", "http://localhost:9090/data/mykey", strings.NewReader("bar"))
-	client := http.Client{}
-	response, _ := client.Do(request)
-	assert.Equal(t, 201, response.StatusCode)
+	server1 := testServer()
+	defer server1.Close()
+	server2 := testServer()
+	defer server2.Close()
 
-	response, _ = http.Get("http://localhost:9191/data/mykey")
-	assert.Equal(t, 200, response.StatusCode)
-	body, _ := ioutil.ReadAll(response.Body)
-	assert.Equal(t, "bar", string(body))
+	server1.node.AddPeer(server2.URL)
+	server2.node.AddPeer(server1.URL)
+
+	statusCode, _ := httpRequest("PUT", server1.URL+"/data/mykey", "bar")
+	assert.Equal(t, 201, statusCode)
+
+	statusCode2, body := httpRequest("GET", server2.URL+"/data/mykey", "")
+	assert.Equal(t, 200, statusCode2)
+	assert.Equal(t, "bar", body)
 }

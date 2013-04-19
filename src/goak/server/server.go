@@ -1,10 +1,11 @@
 package server
 
 import (
-	"fmt"
+	"github.com/bmizerany/pat"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"strings"
 )
 
 type Server struct {
@@ -15,25 +16,9 @@ type Server struct {
 
 func New() *Server {
 	return &Server{
-		values:  make(map[string]string),
-		peer:    "",
+		values: make(map[string]string),
+		peer:   "",
 	}
-}
-
-type GoakRequest struct {
-	*http.Request
-}
-
-func (r *GoakRequest) fetchValue() string {
-	body, _ := ioutil.ReadAll(r.Body)
-	return string(body)
-}
-
-func (r *GoakRequest) fetchKey() string {
-	uri := r.RequestURI
-	uriParts := strings.Split(uri, "/")
-	key := uriParts[len(uriParts)-1]
-	return key
 }
 
 func (server *Server) AddPeer(peer string) {
@@ -44,55 +29,42 @@ func (server *Server) hasPeer() bool {
 	return server.peer != ""
 }
 
-func (server *Server) Listen(port string) {
-	http.ListenAndServe(port, server.Handler())
-}
-
 func (server *Server) Handler() http.Handler {
-	mux := http.NewServeMux()
+	m := pat.New()
 
-	mux.HandleFunc("/heartbeat", func(w http.ResponseWriter, request *http.Request) {
-		w.WriteHeader(200)
-		fmt.Fprintf(w, "OK")
-	})
+	m.Put("/data/:key", http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		key := request.URL.Query().Get(":key")
+		body, _ := ioutil.ReadAll(request.Body)
+		value := string(body)
 
-	mux.HandleFunc("/data/", func(w http.ResponseWriter, request *http.Request) {
-		r := GoakRequest{request}
-		var value string
+		server.values[key] = value
+		w.WriteHeader(201)
+		io.WriteString(w, value)
+	}))
 
-		switch r.Method {
-		case "GET":
-			key := r.fetchKey()
-			value = server.values[key]
+	m.Get("/data/:key", http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		key := request.URL.Query().Get(":key")
+		value, ok := server.values[key]
 
-			if value == "" {
-				if server.hasPeer() {
-					response, _ := http.Get(server.peer + "/data/" + key)
-					if response.StatusCode == 200 {
-						body, _ := ioutil.ReadAll(response.Body)
-						value = string(body)
-					} else {
-						w.WriteHeader(404)
-					}
+		if !ok {
+			if server.hasPeer() {
+				response, _ := http.Get(server.peer + "/data/" + key)
+				if response.StatusCode == 200 {
+					body, _ := ioutil.ReadAll(response.Body)
+					value = string(body)
+					w.WriteHeader(200)
+					io.WriteString(w, value)
 				} else {
 					w.WriteHeader(404)
 				}
 			} else {
-				w.WriteHeader(200)
+				w.WriteHeader(404)
 			}
-		case "PUT":
-			_, keyExists := server.values[r.fetchKey()]
-			value = r.fetchValue()
-			server.values[r.fetchKey()] = value
-			if keyExists {
-				w.WriteHeader(200)
-			} else {
-				w.WriteHeader(201)
-			}
+		} else {
+			w.WriteHeader(200)
+			io.WriteString(w, value)
 		}
+	}))
 
-		fmt.Fprintf(w, "%s", value)
-	})
-
-	return mux
+	return m
 }
