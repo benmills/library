@@ -5,27 +5,72 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
+func httpRequest(method string, url string, data string) (int, string) {
+	request, err := http.NewRequest(method, url, strings.NewReader(data))
+
+	if err != nil {
+		return 0, err.Error()
+	}
+
+	client := http.Client{}
+	response, requestErr := client.Do(request)
+
+	if requestErr != nil {
+		return 0, requestErr.Error()
+	}
+
+	rawBody, bodyErr := ioutil.ReadAll(response.Body)
+
+	if bodyErr != nil {
+		panic(bodyErr)
+	}
+
+	return response.StatusCode, string(rawBody)
+}
+
 type Server struct {
-	values  map[string]string
-	peers    []string
+	values map[string]string
+	peers []string
+	url string
 	running bool
 }
 
 func New() *Server {
 	return &Server{
 		values: make(map[string]string),
-		peers:   []string{},
+		peers: []string{},
+		url: "",
 	}
 }
 
+func (server *Server) SetURL(url string) {
+	server.url = url
+}
+
 func (server *Server) addPeer(peer string) {
+	for _, p := range server.peers {
+		go httpRequest("PUT", p+"/peers", peer)
+	}
+
 	server.peers = append(server.peers, peer)
+	httpRequest("PUT", peer+"/peers", server.url)
 }
 
 func (server *Server) hasPeer() bool {
 	return len(server.peers) > 0
+}
+
+func (server *Server) peerExists(peer string) bool {
+	for _, p := range server.peers {
+		if p == peer {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (server *Server) Handler() http.Handler {
@@ -68,9 +113,13 @@ func (server *Server) Handler() http.Handler {
 	m.Put("/peers", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
 		body, _ := ioutil.ReadAll(request.Body)
 		newPeerURL := string(body)
-		server.addPeer(newPeerURL)
 
-		w.WriteHeader(201)
+		if server.peerExists(newPeerURL) {
+			w.WriteHeader(409)
+		} else {
+			server.addPeer(newPeerURL)
+			w.WriteHeader(201)
+		}
 	}))
 
 	m.Get("/peers", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {

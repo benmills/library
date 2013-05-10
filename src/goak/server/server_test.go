@@ -2,21 +2,10 @@ package server
 
 import (
 	"github.com/bmizerany/assert"
-	"io/ioutil"
-	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+	"strings"
 )
-
-func httpRequest(method string, url string, data string) (int, string) {
-	request, _ := http.NewRequest(method, url, strings.NewReader(data))
-	client := http.Client{}
-	response, _ := client.Do(request)
-	rawBody, _ := ioutil.ReadAll(response.Body)
-
-	return response.StatusCode, string(rawBody)
-}
 
 type TestNode struct {
 	*httptest.Server
@@ -25,7 +14,10 @@ type TestNode struct {
 
 func testServer() *TestNode {
 	goakServer := New()
-	return &TestNode{httptest.NewServer(goakServer.Handler()), goakServer}
+	httpServer := httptest.NewServer(goakServer.Handler())
+	goakServer.SetURL(httpServer.URL)
+
+	return &TestNode{httpServer, goakServer}
 }
 
 func TestAddAKey(t *testing.T) {
@@ -77,7 +69,6 @@ func TestFetchesAcrossNodes(t *testing.T) {
 	defer server2.Close()
 
 	httpRequest("PUT", server1.URL+"/peers", server2.URL)
-	httpRequest("PUT", server2.URL+"/peers", server1.URL)
 
 	statusCode, _ := httpRequest("PUT", server1.URL+"/data/mykey", "bar")
 	assert.Equal(t, 201, statusCode)
@@ -128,4 +119,67 @@ func TestAddPeer(t *testing.T) {
 	statusCode, body := httpRequest("GET", server1.URL+"/peers", "")
 	assert.Equal(t, 200, statusCode)
 	assert.Equal(t, `{"peers":["peer.url"]}`, body)
+}
+
+func TestAddPeerFailsOnMultipleCalls(t *testing.T) {
+	server1 := testServer()
+	defer server1.Close()
+
+	var statusCode int
+
+	statusCode, _ = httpRequest("PUT", server1.URL+"/peers", "peer.url")
+	assert.Equal(t, 201, statusCode)
+
+	statusCode, _ = httpRequest("PUT", server1.URL+"/peers", "peer.url")
+	assert.Equal(t, 409, statusCode)
+}
+
+func TestAddPeerCallsBack(t *testing.T) {
+	server1 := testServer()
+	defer server1.Close()
+	server2 := testServer()
+	defer server2.Close()
+
+	httpRequest("PUT", server1.URL+"/peers", server2.URL)
+
+	var statusCode int
+	var body string
+
+	statusCode, body = httpRequest("GET", server1.URL+"/peers", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, `{"peers":["`+server2.URL+`"]}`, body)
+
+	statusCode, body = httpRequest("GET", server2.URL+"/peers", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, `{"peers":["`+server1.URL+`"]}`, body)
+}
+
+func TestAddPeerUpdatesExistingPeers(t *testing.T) {
+	serverA := testServer()
+	defer serverA.Close()
+	serverB := testServer()
+	defer serverB.Close()
+	serverC := testServer()
+	defer serverC.Close()
+
+	httpRequest("PUT", serverA.URL+"/peers", serverB.URL)
+	httpRequest("PUT", serverA.URL+"/peers", serverC.URL)
+
+	var statusCode int
+	var body string
+
+	statusCode, body = httpRequest("GET", serverA.URL+"/peers", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, true, strings.Contains(body, serverB.URL))
+	assert.Equal(t, true, strings.Contains(body, serverC.URL))
+
+	statusCode, body = httpRequest("GET", serverB.URL+"/peers", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, true, strings.Contains(body, serverA.URL))
+	assert.Equal(t, true, strings.Contains(body, serverC.URL))
+
+	statusCode, body = httpRequest("GET", serverC.URL+"/peers", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, true, strings.Contains(body, serverA.URL))
+	assert.Equal(t, true, strings.Contains(body, serverB.URL))
 }
