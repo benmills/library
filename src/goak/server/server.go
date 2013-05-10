@@ -4,7 +4,6 @@ import (
 	"github.com/bmizerany/pat"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -63,6 +62,15 @@ func (server *Server) Handler() http.Handler {
 		} else {
 			w.WriteHeader(200)
 			io.WriteString(w, value)
+		}
+	}))
+
+	m.Get("/peer", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
+		if server.hasPeer() {
+			w.WriteHeader(200)
+			io.WriteString(w, server.peer)
+		} else {
+			w.WriteHeader(404)
 		}
 	}))
 

@@ -86,3 +86,24 @@ func TestFetchesAcrossNodes(t *testing.T) {
 	assert.Equal(t, 200, statusCode2)
 	assert.Equal(t, "bar", body)
 }
+
+func TestGetPeerWithNoPeer(t *testing.T) {
+	server1 := testServer()
+	defer server1.Close()
+
+	statusCode, _ := httpRequest("GET", server1.URL+"/peer", "")
+	assert.Equal(t, 404, statusCode)
+}
+
+func TestGetPeer(t *testing.T) {
+	server1 := testServer()
+	defer server1.Close()
+	server2 := testServer()
+	defer server2.Close()
+
+	server1.node.AddPeer(server2.URL)
+
+	statusCode, body := httpRequest("GET", server1.URL+"/peer", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, server2.URL, body)
+}
