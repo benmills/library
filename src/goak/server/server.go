@@ -20,7 +20,7 @@ func New() *Server {
 	}
 }
 
-func (server *Server) AddPeer(peer string) {
+func (server *Server) addPeer(peer string) {
 	server.peer = peer
 }
 
@@ -63,6 +63,14 @@ func (server *Server) Handler() http.Handler {
 			w.WriteHeader(200)
 			io.WriteString(w, value)
 		}
+	}))
+
+	m.Put("/peer", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
+		body, _ := ioutil.ReadAll(request.Body)
+		newPeerURL := string(body)
+		server.addPeer(newPeerURL)
+
+		w.WriteHeader(201)
 	}))
 
 	m.Get("/peer", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
