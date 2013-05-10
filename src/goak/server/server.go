@@ -9,23 +9,23 @@ import (
 
 type Server struct {
 	values  map[string]string
-	peer    string
+	peers    []string
 	running bool
 }
 
 func New() *Server {
 	return &Server{
 		values: make(map[string]string),
-		peer:   "",
+		peers:   []string{},
 	}
 }
 
 func (server *Server) addPeer(peer string) {
-	server.peer = peer
+	server.peers = append(server.peers, peer)
 }
 
 func (server *Server) hasPeer() bool {
-	return server.peer != ""
+	return len(server.peers) > 0
 }
 
 func (server *Server) Handler() http.Handler {
@@ -47,7 +47,7 @@ func (server *Server) Handler() http.Handler {
 
 		if !ok {
 			if server.hasPeer() {
-				response, _ := http.Get(server.peer + "/data/" + key)
+				response, _ := http.Get(server.peers[0] + "/data/" + key)
 				if response.StatusCode == 200 {
 					body, _ := ioutil.ReadAll(response.Body)
 					value = string(body)
@@ -65,7 +65,7 @@ func (server *Server) Handler() http.Handler {
 		}
 	}))
 
-	m.Put("/peer", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
+	m.Put("/peers", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
 		body, _ := ioutil.ReadAll(request.Body)
 		newPeerURL := string(body)
 		server.addPeer(newPeerURL)
@@ -73,10 +73,10 @@ func (server *Server) Handler() http.Handler {
 		w.WriteHeader(201)
 	}))
 
-	m.Get("/peer", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
+	m.Get("/peers", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
 		if server.hasPeer() {
 			w.WriteHeader(200)
-			io.WriteString(w, server.peer)
+			io.WriteString(w, JsonData{"peers": server.peers}.Encode())
 		} else {
 			w.WriteHeader(404)
 		}

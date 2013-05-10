@@ -76,8 +76,8 @@ func TestFetchesAcrossNodes(t *testing.T) {
 	server2 := testServer()
 	defer server2.Close()
 
-	httpRequest("PUT", server1.URL+"/peer", server2.URL)
-	httpRequest("PUT", server2.URL+"/peer", server1.URL)
+	httpRequest("PUT", server1.URL+"/peers", server2.URL)
+	httpRequest("PUT", server2.URL+"/peers", server1.URL)
 
 	statusCode, _ := httpRequest("PUT", server1.URL+"/data/mykey", "bar")
 	assert.Equal(t, 201, statusCode)
@@ -91,33 +91,41 @@ func TestGetPeerWithNoPeer(t *testing.T) {
 	server1 := testServer()
 	defer server1.Close()
 
-	statusCode, _ := httpRequest("GET", server1.URL+"/peer", "")
+	statusCode, _ := httpRequest("GET", server1.URL+"/peers", "")
 	assert.Equal(t, 404, statusCode)
 }
 
 func TestGetPeer(t *testing.T) {
 	server1 := testServer()
 	defer server1.Close()
-	server2 := testServer()
-	defer server2.Close()
 
-	httpRequest("PUT", server1.URL+"/peer", server2.URL)
+	httpRequest("PUT", server1.URL+"/peers", "peer.url")
 
-	statusCode, body := httpRequest("GET", server1.URL+"/peer", "")
+	statusCode, body := httpRequest("GET", server1.URL+"/peers", "")
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, server2.URL, body)
+	assert.Equal(t, `{"peers":["peer.url"]}`, body)
+}
+
+func TestGetMultiplePeers(t *testing.T) {
+	server1 := testServer()
+	defer server1.Close()
+
+	httpRequest("PUT", server1.URL+"/peers", "peer1.url")
+	httpRequest("PUT", server1.URL+"/peers", "peer2.url")
+
+	statusCode, body := httpRequest("GET", server1.URL+"/peers", "")
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, `{"peers":["peer1.url","peer2.url"]}`, body)
 }
 
 func TestAddPeer(t *testing.T) {
 	server1 := testServer()
 	defer server1.Close()
-	server2 := testServer()
-	defer server2.Close()
 
-	statusCode, _ := httpRequest("PUT", server1.URL+"/peer", server2.URL)
+	statusCode, _ := httpRequest("PUT", server1.URL+"/peers", "peer.url")
 	assert.Equal(t, 201, statusCode)
 
-	statusCode, body := httpRequest("GET", server1.URL+"/peer", "")
+	statusCode, body := httpRequest("GET", server1.URL+"/peers", "")
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, server2.URL, body)
+	assert.Equal(t, `{"peers":["peer.url"]}`, body)
 }
