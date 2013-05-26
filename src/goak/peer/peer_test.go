@@ -2,10 +2,10 @@ package peer
 
 import (
 	"github.com/bmizerany/pat"
-	"github.com/bmizerany/assert"
+	"github.com/benmills/quiz"
+
 	"net/http/httptest"
 	"testing"
-	"strings"
 
 	"goak/http_client"
 )
@@ -21,26 +21,33 @@ func testNode() *httptest.Server {
 }
 
 func TestGetPeerWithNoPeer(t *testing.T) {
+	test := quiz.Test(t)
+
 	node := testNode()
 	defer node.Close()
 
 	statusCode, _ := http_client.HttpRequest("GET", node.URL+"/peers", "")
-	assert.Equal(t, 404, statusCode)
+
+	test.Expect(statusCode).ToEqual(404)
 }
 
 func TestAddPeer(t *testing.T) {
+	test := quiz.Test(t)
+
 	node := testNode()
 	defer node.Close()
 
 	statusCode, _ := http_client.HttpRequest("PUT", node.URL+"/peers", "peer.url")
-	assert.Equal(t, 201, statusCode)
+	test.Expect(statusCode).ToEqual(201)
 
 	statusCode, body := http_client.HttpRequest("GET", node.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, `{"peers":["peer.url"]}`, body)
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual(`{"peers":["peer.url"]}`)
 }
 
 func TestGetMultiplePeers(t *testing.T) {
+	test := quiz.Test(t)
+
 	node := testNode()
 	defer node.Close()
 
@@ -48,24 +55,29 @@ func TestGetMultiplePeers(t *testing.T) {
 	http_client.HttpRequest("PUT", node.URL+"/peers", "peer2.url")
 
 	statusCode, body := http_client.HttpRequest("GET", node.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, `{"peers":["peer1.url","peer2.url"]}`, body)
+
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual(`{"peers":["peer1.url","peer2.url"]}`)
 }
 
 func TestAddPeerFailsOnMultipleCalls(t *testing.T) {
+	test := quiz.Test(t)
+
 	node := testNode()
 	defer node.Close()
 
 	var statusCode int
 
 	statusCode, _ = http_client.HttpRequest("PUT", node.URL+"/peers", "peer.url")
-	assert.Equal(t, 201, statusCode)
+	test.Expect(statusCode).ToEqual(201)
 
 	statusCode, _ = http_client.HttpRequest("PUT", node.URL+"/peers", "peer.url")
-	assert.Equal(t, 409, statusCode)
+	test.Expect(statusCode).ToEqual(409)
 }
 
 func TestAddPeerCallsBack(t *testing.T) {
+	test := quiz.Test(t)
+
 	nodeA := testNode()
 	defer nodeA.Close()
 	nodeB := testNode()
@@ -77,15 +89,17 @@ func TestAddPeerCallsBack(t *testing.T) {
 	var body string
 
 	statusCode, body = http_client.HttpRequest("GET", nodeA.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, `{"peers":["`+nodeB.URL+`"]}`, body)
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual(`{"peers":["`+nodeB.URL+`"]}`)
 
 	statusCode, body = http_client.HttpRequest("GET", nodeB.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, `{"peers":["`+nodeA.URL+`"]}`, body)
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual(`{"peers":["`+nodeA.URL+`"]}`)
 }
 
 func TestAddPeerUpdatesExistingPeers(t *testing.T) {
+	test := quiz.Test(t)
+
 	nodeA := testNode()
 	defer nodeA.Close()
 	nodeB := testNode()
@@ -100,17 +114,17 @@ func TestAddPeerUpdatesExistingPeers(t *testing.T) {
 	var body string
 
 	statusCode, body = http_client.HttpRequest("GET", nodeA.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, true, strings.Contains(body, nodeB.URL))
-	assert.Equal(t, true, strings.Contains(body, nodeC.URL))
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(nodeB.URL)
+	test.Expect(body).ToContain(nodeC.URL)
 
 	statusCode, body = http_client.HttpRequest("GET", nodeB.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, true, strings.Contains(body, nodeA.URL))
-	assert.Equal(t, true, strings.Contains(body, nodeC.URL))
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(nodeA.URL)
+	test.Expect(body).ToContain(nodeC.URL)
 
 	statusCode, body = http_client.HttpRequest("GET", nodeC.URL+"/peers", "")
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, true, strings.Contains(body, nodeA.URL))
-	assert.Equal(t, true, strings.Contains(body, nodeB.URL))
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(nodeA.URL)
+	test.Expect(body).ToContain(nodeB.URL)
 }

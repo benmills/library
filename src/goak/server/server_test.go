@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/bmizerany/assert"
+	"github.com/benmills/quiz"
 	"net/http/httptest"
 	"testing"
 
@@ -22,36 +22,44 @@ func testServer() *TestNode {
 }
 
 func TestAddAKey(t *testing.T) {
+	test := quiz.Test(t)
+
 	server := testServer()
 	defer server.Close()
 
 	statusCode, body := http_client.HttpRequest("PUT", server.URL+"/data/mykey", "bar")
 
-	assert.Equal(t, 201, statusCode)
-	assert.Equal(t, "bar", body)
+	test.Expect(statusCode).ToEqual(201)
+	test.Expect(body).ToEqual("bar")
 }
 
 func TestFetchKey(t *testing.T) {
+	test := quiz.Test(t)
+
 	server := testServer()
 	defer server.Close()
 
 	http_client.HttpRequest("PUT", server.URL+"/data/mykey", "bar")
 	statusCode, body := http_client.HttpRequest("GET", server.URL+"/data/mykey", "bar")
 
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "bar", body)
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual("bar")
 }
 
 func TestFetchUnknownKey(t *testing.T) {
+	test := quiz.Test(t)
+
 	server := testServer()
 	defer server.Close()
 
 	statusCode, _ := http_client.HttpRequest("GET", server.URL+"/data/mykey", "bar")
 
-	assert.Equal(t, 404, statusCode)
+	test.Expect(statusCode).ToEqual(404)
 }
 
 func TestUpdateKey(t *testing.T) {
+	test := quiz.Test(t)
+
 	server := testServer()
 	defer server.Close()
 
@@ -59,11 +67,13 @@ func TestUpdateKey(t *testing.T) {
 	http_client.HttpRequest("PUT", server.URL+"/data/mykey", "baz")
 	statusCode, body := http_client.HttpRequest("GET", server.URL+"/data/mykey", "")
 
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "baz", body)
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual("baz")
 }
 
 func TestFetchesAcrossNodes(t *testing.T) {
+	test := quiz.Test(t)
+
 	server1 := testServer()
 	defer server1.Close()
 	server2 := testServer()
@@ -72,9 +82,9 @@ func TestFetchesAcrossNodes(t *testing.T) {
 	http_client.HttpRequest("PUT", server1.URL+"/peers", server2.URL)
 
 	statusCode, _ := http_client.HttpRequest("PUT", server1.URL+"/data/mykey", "bar")
-	assert.Equal(t, 201, statusCode)
+	test.Expect(statusCode).ToEqual(201)
 
 	statusCode2, body := http_client.HttpRequest("GET", server2.URL+"/data/mykey", "")
-	assert.Equal(t, 200, statusCode2)
-	assert.Equal(t, "bar", body)
+	test.Expect(statusCode2).ToEqual(200)
+	test.Expect(body).ToEqual("bar")
 }
