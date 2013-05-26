@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"goak/http_client"
+	"goak/httpclient"
 )
 
 type Peer struct {
@@ -27,11 +27,11 @@ func (peer *Peer) SetURL(url string) {
 
 func (peer *Peer) addPeer(newPeer string) {
 	for _, p := range peer.Peers {
-		go http_client.HttpRequest("PUT", p+"/peers", newPeer)
+		go httpclient.Put(p+"/peers", newPeer)
 	}
 
 	peer.Peers = append(peer.Peers, newPeer)
-	http_client.HttpRequest("PUT", newPeer+"/peers", peer.url)
+	httpclient.Put(newPeer+"/peers", peer.url)
 }
 
 func (peer *Peer) HasPeer() bool {
@@ -64,7 +64,7 @@ func (peer *Peer) Handler(m *pat.PatternServeMux)  {
 	m.Get("/peers", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
 		if peer.HasPeer() {
 			w.WriteHeader(200)
-			io.WriteString(w, http_client.JsonData{"peers": peer.Peers}.Encode())
+			io.WriteString(w, httpclient.JsonData{"peers": peer.Peers}.Encode())
 		} else {
 			w.WriteHeader(404)
 		}

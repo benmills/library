@@ -1,4 +1,4 @@
-package http_client
+package httpclient
 
 import (
 	"io/ioutil"
@@ -27,4 +27,12 @@ func HttpRequest(method string, url string, data string) (int, string) {
 	}
 
 	return response.StatusCode, string(rawBody)
+}
+
+func Get(url string, data string) (int, string) {
+	return HttpRequest("GET", url, data)
+}
+
+func Put(url string, data string) (int, string) {
+	return HttpRequest("PUT", url, data)
 }
