@@ -4,6 +4,11 @@ import (
 	"hash/crc32"
 )
 
+const (
+	MaxRingSize = 4294967294
+	VnodeCount = 1024
+)
+
 type Ring struct {
 	size uint32
 	vnodeCount int
@@ -12,13 +17,13 @@ type Ring struct {
 
 func New() *Ring {
 	return &Ring{
-		size: 4294967294,
-		vnodeCount: 1024,
+		size: MaxRingSize,
+		vnodeCount: VnodeCount,
 		nodes: []*Node{},
 	}
 }
 
-func (ring *Ring) AddNode(nodeName string) *Node {
+func (ring *Ring) AddNode(name string) *Node {
 	vnodeCount := ring.vnodeCount / (ring.NodeCount()+1)
 
 	for _, node := range(ring.nodes) {
@@ -26,8 +31,7 @@ func (ring *Ring) AddNode(nodeName string) *Node {
 	}
 
 	newNode := &Node{
-		name: nodeName,
-		hash: hash(nodeName),
+		name: name,
 		vnodeCount: vnodeCount,
 		vnodeStart: ring.getNextNodeVnodeStart(vnodeCount),
 		vnodeSize: ring.vnodeSize(),
@@ -35,6 +39,13 @@ func (ring *Ring) AddNode(nodeName string) *Node {
 
 	ring.nodes = append(ring.nodes, newNode)
 	return newNode
+}
+
+func (ring *Ring) SetNodes(nodes []string) {
+	ring.nodes = []*Node{}
+	for _, nodeName := range nodes {
+		ring.AddNode(nodeName)
+	}
 }
 
 func (ring *Ring) NodeCount() int {
@@ -56,6 +67,26 @@ func (ring *Ring) NodeForKey(key string) *Node {
 func (ring *Ring) AddKey(key string) {
 	node := ring.NodeForKey(key)
 	node.keyCount = node.keyCount + 1
+}
+
+func (ring *Ring) GetNodes() []string {
+	result := []string{}
+
+	for _, node := range(ring.nodes) {
+		result = append(result, node.name)
+	}
+
+	return result
+}
+
+func (ring *Ring) Get(name string) *Node {
+	for _, node := range(ring.nodes) {
+		if node.name == name {
+			return node
+		}
+	}
+
+	panic("No node found for name " + name)
 }
 
 func (ring *Ring) getNextNodeVnodeStart(nodeVnodeCount int) uint32 {

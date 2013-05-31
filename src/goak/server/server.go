@@ -14,8 +14,8 @@ type Server struct {
 	values map[string]string
 }
 
-func New() *Server {
-	return &Server{peer.New(), make(map[string]string)}
+func New(url string) *Server {
+	return &Server{peer.New(url), make(map[string]string)}
 }
 
 func (server *Server) Handler() http.Handler {

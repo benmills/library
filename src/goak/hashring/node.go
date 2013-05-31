@@ -22,3 +22,19 @@ func (node *Node) OwnsKeyHash(keyHash uint32) bool {
 
 	return false
 }
+
+func (node *Node) VnodeCount() int {
+	return node.vnodeCount;
+}
+
+func (node *Node) VnodeSize() uint32 {
+	return node.vnodeSize;
+}
+
+func (node *Node) VnodeStart() uint32 {
+	return node.vnodeStart;
+}
+
+func (node *Node) SetName(name string) {
+	node.name = name
+}

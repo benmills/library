@@ -14,7 +14,7 @@ type TestNode struct {
 }
 
 func testServer() *TestNode {
-	goakServer := New()
+	goakServer := New("localhost:someport")
 	httpServer := httptest.NewServer(goakServer.Handler())
 	goakServer.SetURL(httpServer.URL)
 

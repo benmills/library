@@ -12,7 +12,7 @@ import (
 
 func testNode() *httptest.Server {
 	m := pat.New()
-	goakPeer := New()
+	goakPeer := New("localhost:someport")
 	goakPeer.Handler(m)
 	httpServer := httptest.NewServer(m)
 	goakPeer.SetURL(httpServer.URL)
@@ -75,7 +75,7 @@ func TestAddPeerFailsOnMultipleCalls(t *testing.T) {
 	test.Expect(statusCode).ToEqual(409)
 }
 
-func TestAddPeerCallsBack(t *testing.T) {
+func TestJoinCallsBack(t *testing.T) {
 	test := quiz.Test(t)
 
 	nodeA := testNode()
@@ -83,7 +83,7 @@ func TestAddPeerCallsBack(t *testing.T) {
 	nodeB := testNode()
 	defer nodeB.Close()
 
-	httpclient.Put(nodeA.URL+"/peers", nodeB.URL)
+	httpclient.Put(nodeA.URL+"/peers/join", nodeB.URL)
 
 	var statusCode int
 	var body string
@@ -97,7 +97,7 @@ func TestAddPeerCallsBack(t *testing.T) {
 	test.Expect(body).ToEqual(`{"peers":["`+nodeA.URL+`"]}`)
 }
 
-func TestAddPeerUpdatesExistingPeers(t *testing.T) {
+func TestJoinUpdatesExistingPeers(t *testing.T) {
 	test := quiz.Test(t)
 
 	nodeA := testNode()
@@ -107,8 +107,8 @@ func TestAddPeerUpdatesExistingPeers(t *testing.T) {
 	nodeC := testNode()
 	defer nodeC.Close()
 
-	httpclient.Put(nodeA.URL+"/peers", nodeB.URL)
-	httpclient.Put(nodeA.URL+"/peers", nodeC.URL)
+	httpclient.Put(nodeA.URL+"/peers/join", nodeB.URL)
+	httpclient.Put(nodeA.URL+"/peers/join", nodeC.URL)
 
 	var statusCode int
 	var body string
@@ -127,4 +127,56 @@ func TestAddPeerUpdatesExistingPeers(t *testing.T) {
 	test.Expect(statusCode).ToEqual(200)
 	test.Expect(body).ToContain(nodeA.URL)
 	test.Expect(body).ToContain(nodeB.URL)
+}
+
+func TestNodeStats(t *testing.T) {
+	test := quiz.Test(t)
+
+	node := testNode()
+	defer node.Close()
+
+	statusCode, body := httpclient.Get(node.URL+"/stats", "")
+
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(`"vnodeCount":1024`)
+	test.Expect(body).ToContain(`"vnodeSize":4194303`)
+	test.Expect(body).ToContain(`"vnodeStart":0`)
+	test.Expect(body).ToContain(`"ring":["`+node.URL+`"]`)
+}
+
+func TestNodeSetRing(t *testing.T) {
+	test := quiz.Test(t)
+
+	node := testNode()
+	defer node.Close()
+
+	statusCode, _ := httpclient.Put(node.URL+"/ring", `{"ring":["`+node.URL+`","b","c"]}`)
+	test.Expect(statusCode).ToEqual(201)
+
+	_, body := httpclient.Get(node.URL+"/stats", "")
+	test.Expect(body).ToContain(`"ring":["`+node.URL+`","b","c"]`)
+}
+
+func TestAddNodeUpdatesRing(t *testing.T) {
+	test := quiz.Test(t)
+	var statusCode int
+	var body string
+
+	nodeA := testNode()
+	defer nodeA.Close()
+
+	nodeB := testNode()
+	defer nodeB.Close()
+
+	httpclient.Put(nodeA.URL+"/peers/join", nodeB.URL)
+
+	statusCode, body = httpclient.Get(nodeA.URL+"/stats", "")
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(`"vnodeCount":512`)
+	test.Expect(body).ToContain(`"vnodeStart":0`)
+
+	statusCode, body = httpclient.Get(nodeB.URL+"/stats", "")
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(`"vnodeCount":512`)
+	test.Expect(body).ToContain(`"vnodeStart":2147483137`)
 }
