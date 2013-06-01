@@ -38,3 +38,7 @@ func (node *Node) VnodeStart() uint32 {
 func (node *Node) SetName(name string) {
 	node.name = name
 }
+
+func (node *Node) GetName() string {
+	return node.name
+}

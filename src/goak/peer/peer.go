@@ -1,14 +1,15 @@
 package peer
 
 import (
+	"encoding/json"
 	"github.com/bmizerany/pat"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"encoding/json"
 
-	"goak/httpclient"
 	"goak/hashring"
+	"goak/httpclient"
 )
 
 type Peer struct {
@@ -16,9 +17,10 @@ type Peer struct {
 	url string
 	ring *hashring.Ring
 	node *hashring.Node
+	logger *log.Logger
 }
 
-func New(url string) *Peer {
+func New(url string, logger *log.Logger) *Peer {
 	ring := hashring.New()
 	node := ring.AddNode(url)
 
@@ -27,7 +29,16 @@ func New(url string) *Peer {
 		url: url,
 		ring: ring,
 		node: node,
+		logger: logger,
 	}
+}
+
+func (peer *Peer) PeerAddressForKey(key string) string {
+	return peer.ring.NodeForKey(key).GetName()
+}
+
+func (peer *Peer) URL() string {
+	return peer.url
 }
 
 func (peer *Peer) SetURL(url string) {

@@ -1,9 +1,9 @@
 package hashring
 
 import (
-	"testing"
 	"github.com/benmills/quiz"
 	"strconv"
+	"testing"
 )
 
 func TestRingCanHaveNodes(t *testing.T) {

@@ -2,11 +2,15 @@ package server
 
 import (
 	"github.com/benmills/quiz"
+	"log"
 	"net/http/httptest"
 	"testing"
 
 	"goak/httpclient"
 )
+
+type NullWriter int
+func (NullWriter) Write([]byte) (int, error) { return 0, nil }
 
 type TestNode struct {
 	*httptest.Server
@@ -14,7 +18,8 @@ type TestNode struct {
 }
 
 func testServer() *TestNode {
-	goakServer := New("localhost:someport")
+	nullLogger := log.New(new(NullWriter), "", 0)
+	goakServer := New("localhost:someport", nullLogger)
 	httpServer := httptest.NewServer(goakServer.Handler())
 	goakServer.SetURL(httpServer.URL)
 
@@ -74,17 +79,27 @@ func TestUpdateKey(t *testing.T) {
 func TestFetchesAcrossNodes(t *testing.T) {
 	test := quiz.Test(t)
 
-	server1 := testServer()
-	defer server1.Close()
-	server2 := testServer()
-	defer server2.Close()
+	serverA := testServer()
+	defer serverA.Close()
+	serverB := testServer()
+	defer serverB.Close()
 
-	httpclient.Put(server1.URL+"/peers", server2.URL)
+	httpclient.Put(serverA.URL+"/peers/join", serverB.URL)
 
-	statusCode, _ := httpclient.Put(server1.URL+"/data/mykey", "bar")
+	// "a"'s hash will be stored on serverB
+	key := "a"
+
+	var statusCode int
+	var body string
+
+	statusCode, _ = httpclient.Put(serverA.URL+"/data/"+key, "bar")
 	test.Expect(statusCode).ToEqual(201)
 
-	statusCode2, body := httpclient.Get(server2.URL+"/data/mykey", "")
-	test.Expect(statusCode2).ToEqual(200)
+	statusCode, body = httpclient.Get(serverB.URL+"/data/"+key, "")
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToEqual("bar")
+
+	statusCode, body = httpclient.Get(serverA.URL+"/data/"+key, "")
+	test.Expect(statusCode).ToEqual(200)
 	test.Expect(body).ToEqual("bar")
 }

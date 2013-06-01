@@ -1,18 +1,22 @@
 package peer
 
 import (
-	"github.com/bmizerany/pat"
 	"github.com/benmills/quiz"
-
+	"github.com/bmizerany/pat"
+	"log"
 	"net/http/httptest"
 	"testing"
 
 	"goak/httpclient"
 )
 
+type NullWriter int
+func (NullWriter) Write([]byte) (int, error) { return 0, nil }
+
 func testNode() *httptest.Server {
+	nullLogger := log.New(new(NullWriter), "", 0)
 	m := pat.New()
-	goakPeer := New("localhost:someport")
+	goakPeer := New("localhost:someport", nullLogger)
 	goakPeer.Handler(m)
 	httpServer := httptest.NewServer(m)
 	goakPeer.SetURL(httpServer.URL)

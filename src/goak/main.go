@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"goak/server"
 )
@@ -23,13 +24,15 @@ func main() {
 
 	flag.Parse()
 
+
+	logger := log.New(os.Stdin, "["+host+":"+port+"]", log.LstdFlags)
 	if !verbose {
-		log.SetOutput(new(NullWriter))
+		logger = log.New(new(NullWriter), "", 0)
 	}
 
-	server := server.New("http://"+host+":"+port)
+	server := server.New("http://"+host+":"+port, logger)
 
-	log.Printf("Starting on http://%s:%s", host, port)
+	logger.Printf("Starting")
 
 	http.Handle("/", server.Handler())
 	err := http.ListenAndServe(host+":"+port, nil)
