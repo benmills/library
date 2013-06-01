@@ -1,4 +1,5 @@
 language: go
+install: go clean
 
 script:
  - go test -v goak/...
