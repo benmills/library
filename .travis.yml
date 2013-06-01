@@ -1,5 +1,2 @@
-language: go
-install: go clean
-
-script:
- - go test -v goak/...
+language: ruby
+script: ls && env GOPATH=$PWD go build goak
