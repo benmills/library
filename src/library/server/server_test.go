@@ -38,6 +38,20 @@ func TestAddAKey(t *testing.T) {
 	test.Expect(body).ToEqual("bar")
 }
 
+func TestStatsKeys(t *testing.T) {
+	test := quiz.Test(t)
+
+	server := testServer()
+	defer server.Close()
+
+	httpclient.Put(server.URL+"/data/mykey", "bar")
+	statusCode, body := httpclient.Get(server.URL+"/stats/keys", "")
+
+	test.Expect(statusCode).ToEqual(200)
+	test.Expect(body).ToContain(`"count":1`)
+	test.Expect(body).ToContain(`"data":{"mykey":"bar"}`)
+}
+
 func TestFetchKey(t *testing.T) {
 	test := quiz.Test(t)
 

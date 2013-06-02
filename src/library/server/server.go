@@ -70,5 +70,16 @@ func (server *Server) Handler() http.Handler {
 		}
 	}))
 
+	m.Get("/stats/keys", http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		stats := httpclient.JsonData{
+			"count": len(server.values),
+			"data": server.values,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		io.WriteString(w, stats.Encode())
+	}))
+
 	return m
 }
