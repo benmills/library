@@ -117,3 +117,26 @@ func TestFetchesAcrossNodes(t *testing.T) {
 	test.Expect(statusCode).ToEqual(200)
 	test.Expect(body).ToEqual("bar")
 }
+
+func TestReplicationOnPut(t *testing.T) {
+	test := quiz.Test(t)
+
+	serverA := testServer()
+	defer serverA.Close()
+	serverB := testServer()
+	defer serverB.Close()
+
+	httpclient.Put(serverA.URL+"/peers/join", serverB.URL)
+	httpclient.Put(serverA.URL+"/settings/n", "1")
+
+	// "a"'s hash will be stored on serverB
+	key := "a"
+
+	httpclient.Put(serverA.URL+"/data/"+key, "bar")
+
+	_, aHasKey := serverA.node.values["a"]
+	_, bHasKey := serverB.node.values["a"]
+
+	test.Expect(aHasKey).ToBeTrue()
+	test.Expect(bHasKey).ToBeTrue()
+}

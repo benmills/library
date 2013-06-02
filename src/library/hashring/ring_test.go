@@ -108,3 +108,38 @@ func TestSetNodesClearsOldNodes(t *testing.T) {
 	test.Expect(ring.GetNodes()[1]).ToEqual("B")
 	test.Expect(ring.GetNodes()[2]).ToEqual("C")
 }
+
+func TestNodeNext(t *testing.T) {
+	test := quiz.Test(t)
+
+	ring := New()
+	a := ring.AddNode("A")
+	b := ring.AddNode("B")
+	c := ring.AddNode("C")
+
+	test.Expect(a.next).ToEqual(b)
+	test.Expect(b.next).ToEqual(c)
+	test.Expect(c.next).ToEqual(a)
+}
+
+func TestReplicas(t *testing.T) {
+	test := quiz.Test(t)
+
+	ring := New()
+	ring.SetNValue(2)
+	ring.AddNode("A")
+	ring.AddNode("B")
+	ring.AddNode("C")
+	ring.AddNode("D")
+	ring.AddNode("E")
+	ring.AddNode("F")
+
+	// owned by node B
+	key := "foo"
+
+	preferenceList := ring.PreferenceListForKey(key)
+
+	test.Expect(preferenceList[0]).ToEqual("B")
+	test.Expect(preferenceList[1]).ToEqual("C")
+	test.Expect(preferenceList[2]).ToEqual("D")
+}

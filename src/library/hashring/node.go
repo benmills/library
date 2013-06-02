@@ -7,6 +7,7 @@ type Node struct {
 	vnodeCount int
 	vnodeSize uint32
 	vnodeStart uint32
+	next *Node
 }
 
 func (node *Node) OwnsKeyHash(keyHash uint32) bool {

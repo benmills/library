@@ -12,6 +12,7 @@ const (
 type Ring struct {
 	size uint32
 	vnodeCount int
+	n int
 	nodes []*Node
 }
 
@@ -20,7 +21,12 @@ func New() *Ring {
 		size: MaxRingSize,
 		vnodeCount: VnodeCount,
 		nodes: []*Node{},
+		n: 0,
 	}
+}
+
+func (ring *Ring) SetNValue(n int) {
+	ring.n = n
 }
 
 func (ring *Ring) AddNode(name string) *Node {
@@ -35,6 +41,11 @@ func (ring *Ring) AddNode(name string) *Node {
 		vnodeCount: vnodeCount,
 		vnodeStart: ring.getNextNodeVnodeStart(vnodeCount),
 		vnodeSize: ring.vnodeSize(),
+	}
+
+	if len(ring.nodes) != 0 {
+		ring.lastNode().next = newNode
+		newNode.next = ring.firstNode()
 	}
 
 	ring.nodes = append(ring.nodes, newNode)
@@ -52,6 +63,18 @@ func (ring *Ring) NodeCount() int {
 	return len(ring.nodes)
 }
 
+func (ring *Ring) PreferenceListForKey(key string) []string {
+	preferenceList := []string{}
+
+	n := ring.NodeForKey(key)
+	for i := ring.n; i >= 0; i-- {
+		preferenceList = append(preferenceList, n.name)
+		n = n.next
+	}
+
+	return preferenceList
+}
+
 func (ring *Ring) NodeForKey(key string) *Node {
 	keyHash := hash(key)
 
@@ -67,6 +90,10 @@ func (ring *Ring) NodeForKey(key string) *Node {
 func (ring *Ring) AddKey(key string) {
 	node := ring.NodeForKey(key)
 	node.keyCount = node.keyCount + 1
+}
+
+func (ring *Ring) GetNValue() int {
+	return ring.n
 }
 
 func (ring *Ring) GetNodes() []string {
@@ -106,6 +133,10 @@ func (ring *Ring) vnodeSize() uint32 {
 
 func (ring *Ring) lastNode() *Node {
 	return ring.nodes[len(ring.nodes)-1]
+}
+
+func (ring *Ring) firstNode() *Node {
+	return ring.nodes[0]
 }
 
 func hash(input string) uint32 {

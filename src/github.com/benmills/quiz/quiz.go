@@ -24,53 +24,68 @@ type expectation struct {
 	target interface{}
 }
 
-func (expect *expectation) ToEqual(value interface{}) {
-	if expect.target != value {
-		_, file, line, _ := runtime.Caller(1)
+type assertion struct {
+	failure bool
+	failureMessage string
+	messageParts []interface{}
+	expect *expectation
+}
+
+func (a assertion) eval(expect *expectation) {
+	if a.failure {
+		_, file, line, _ := runtime.Caller(2)
 		expect.t.Fail()
-		fmt.Printf("Expected %s to equal %s.\n  %s:%d\n", value, expect.target, file, line)
+		fmt.Printf(a.failureMessage+"\n  %s:%d\n", append(a.messageParts, file, line)...)
 	}
+}
+
+func (expect *expectation) ToEqual(value interface{}) {
+	assertion{
+		failure: expect.target != value,
+		failureMessage: "Expected %s to equal %s.",
+		messageParts: []interface{}{value, expect.target},
+	}.eval(expect)
 }
 
 func (expect *expectation) ToBeTrue() {
-	if expect.target != true {
-		_, file, line, _ := runtime.Caller(1)
-		expect.t.Fail()
-		fmt.Printf("Expected %s to be true.\n  %s:%d\n", expect.target, file, line)
-	}
+	assertion{
+		failure: expect.target != true,
+		failureMessage: "Expected %s to be true.",
+		messageParts: []interface{}{expect.target},
+	}.eval(expect)
 }
 
 func (expect *expectation) ToBeFalse() {
-	if expect.target != false {
-		_, file, line, _ := runtime.Caller(1)
-		expect.t.Fail()
-		fmt.Printf("Expected %s to be false.\n  %s:%d\n", expect.target, file, line)
-	}
+	assertion{
+		failure: expect.target != false,
+		failureMessage: "Expected %s to be false.",
+		messageParts: []interface{}{expect.target},
+	}.eval(expect)
 }
 
 func (expect *expectation) ToBeLessThan(value int) {
 	intTarget := expect.target.(int)
-	if intTarget > value {
-		_, file, line, _ := runtime.Caller(1)
-		expect.t.Fail()
-		fmt.Printf("Expected %s to be less than %s.\n  %s:%d\n", expect.target, value, file, line)
-	}
+	assertion{
+		failure: intTarget > value,
+		failureMessage: "Expected %s to be less tahn %s.",
+		messageParts: []interface{}{expect.target, value},
+	}.eval(expect)
 }
 
 func (expect *expectation) ToBeGreaterThan(value int) {
 	intTarget := expect.target.(int)
-	if intTarget < value {
-		_, file, line, _ := runtime.Caller(1)
-		expect.t.Fail()
-		fmt.Printf("Expected %s to be greater than %s.\n  %s:%d\n", expect.target, value, file, line)
-	}
+	assertion{
+		failure: intTarget < value,
+		failureMessage: "Expected %s to be greater than %s.",
+		messageParts: []interface{}{expect.target, value},
+	}.eval(expect)
 }
 
 func (expect *expectation) ToContain(value string) {
 	stringTarget := expect.target.(string)
-	if !strings.Contains(stringTarget, value) {
-		_, file, line, _ := runtime.Caller(1)
-		expect.t.Fail()
-		fmt.Printf("Expected %s to contain %s.\n  %s:%d\n", expect.target, value, file, line)
-	}
+	assertion{
+		failure: !strings.Contains(stringTarget, value),
+		failureMessage: "Expected %s to contain %s.",
+		messageParts: []interface{}{expect.target, value},
+	}.eval(expect)
 }

@@ -161,6 +161,63 @@ func TestNodeSetRing(t *testing.T) {
 	test.Expect(body).ToContain(`"ring":["`+node.URL+`","b","c"]`)
 }
 
+func TestNodeSetNValue(t *testing.T) {
+	test := quiz.Test(t)
+
+	nodeA := testNode()
+	defer nodeA.Close()
+	nodeB := testNode()
+	defer nodeB.Close()
+
+	httpclient.Put(nodeA.URL+"/peers/join", nodeB.URL)
+
+	statusCode, _ := httpclient.Put(nodeA.URL+"/settings/n", "1")
+	test.Expect(statusCode).ToEqual(201)
+
+	_, body := httpclient.Get(nodeA.URL+"/stats", "")
+	test.Expect(body).ToContain(`"nValue":1`)
+}
+
+func TestErrorOnNonIntForNValue(t *testing.T) {
+	test := quiz.Test(t)
+
+	nodeA := testNode()
+	defer nodeA.Close()
+
+	statusCode, _ := httpclient.Put(nodeA.URL+"/settings/n", "notint")
+	test.Expect(statusCode).ToEqual(422)
+}
+
+func TestErrorOnNGreaterThanTotalPeers(t *testing.T) {
+	test := quiz.Test(t)
+
+	nodeA := testNode()
+	defer nodeA.Close()
+
+	statusCode, _ := httpclient.Put(nodeA.URL+"/settings/n", "5")
+	test.Expect(statusCode).ToEqual(422)
+}
+
+func TestNodeSetNValueUpdatesPeers(t *testing.T) {
+	test := quiz.Test(t)
+
+	nodeA := testNode()
+	defer nodeA.Close()
+	nodeB := testNode()
+	defer nodeB.Close()
+
+	httpclient.Put(nodeA.URL+"/peers/join", nodeB.URL)
+
+	statusCode, _ := httpclient.Put(nodeA.URL+"/settings/n", "1")
+	test.Expect(statusCode).ToEqual(201)
+
+	_, body := httpclient.Get(nodeA.URL+"/stats", "")
+	test.Expect(body).ToContain(`"nValue":1`)
+
+	_, body = httpclient.Get(nodeB.URL+"/stats", "")
+	test.Expect(body).ToContain(`"nValue":1`)
+}
+
 func TestAddNodeUpdatesRing(t *testing.T) {
 	test := quiz.Test(t)
 	var statusCode int

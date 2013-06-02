@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	"library/hashring"
 	"library/httpclient"
@@ -37,6 +38,10 @@ func (peer *Peer) PeerAddressForKey(key string) string {
 	return peer.ring.NodeForKey(key).GetName()
 }
 
+func (peer *Peer) PreferenceListForKey(key string) []string {
+	return peer.ring.PreferenceListForKey(key)
+}
+
 func (peer *Peer) URL() string {
 	return peer.url
 }
@@ -44,6 +49,10 @@ func (peer *Peer) URL() string {
 func (peer *Peer) SetURL(url string) {
 	peer.url = url
 	peer.node.SetName(url)
+}
+
+func (peer *Peer) peerCount() int {
+	return len(peer.Peers) + 1
 }
 
 func (peer *Peer) addPeer(newPeer string) {
@@ -89,6 +98,7 @@ func (peer *Peer) Handler(m *pat.PatternServeMux)  {
 			"vnodeCount": peer.node.VnodeCount(),
 			"vnodeSize": peer.node.VnodeSize(),
 			"vnodeStart": peer.node.VnodeStart(),
+			"nValue": peer.ring.GetNValue(),
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -105,6 +115,33 @@ func (peer *Peer) Handler(m *pat.PatternServeMux)  {
 		peer.node = peer.ring.Get(peer.url)
 
 		w.WriteHeader(201)
+	}))
+
+	m.Put("/settings/set/n", http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		body, _ := ioutil.ReadAll(request.Body)
+		n, err := strconv.Atoi(string(body))
+
+		if err == nil {
+			peer.ring.SetNValue(n)
+			w.WriteHeader(201)
+		} else {
+			w.WriteHeader(422)
+		}
+	}))
+
+	m.Put("/settings/n", http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		body, _ := ioutil.ReadAll(request.Body)
+		n, err := strconv.Atoi(string(body))
+
+		if err == nil && n < peer.peerCount() {
+			peer.ring.SetNValue(n)
+			for _, p := range(peer.Peers) {
+				httpclient.Put(p+"/settings/set/n", string(body))
+			}
+			w.WriteHeader(201)
+		} else {
+			w.WriteHeader(422)
+		}
 	}))
 
 	m.Put("/peers", http.HandlerFunc(func (w http.ResponseWriter, request *http.Request) {
