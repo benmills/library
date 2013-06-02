@@ -1,2 +1,9 @@
-language: ruby
-script: ls && env GOPATH=$PWD go build goak
+install:
+  - rm -rf pkg
+  - rm -rf src/github.com
+  - env GOPATH=$PWD go get github.com/bmizerany/pat
+  - env GOPATH=$PWD go get github.com/benmills/quiz
+  - env GOPATH=$PWD go install github.com/bmizerany/pat
+  - env GOPATH=$PWD go install github.com/benmills/quiz
+  - env GOPATH=$PWD go install library/...
+script: env GOPATH=$PWD go test -v library/...

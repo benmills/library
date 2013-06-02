@@ -1,1 +1,1 @@
-goak: ../goak -v -port=$PORT
+library: ../library -v -port=$PORT

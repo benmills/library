@@ -6,4 +6,4 @@ if [ -z $node_count ]; then
 fi
 
 (sleep 2; $PWD/link.sh $base_port $node_count && echo "Linked!") &
-foreman start --port $base_port -c goak=$node_count
+foreman start --port $base_port -c library=$node_count
