@@ -55,12 +55,15 @@ func (server *Server) Handler() http.Handler {
 		if server.URL() == destinationAddress {
 			value, ok := server.values[key]
 			if ok {
+				server.logger.Printf("Get key '%s' found value '%s'", key, value)
 				w.WriteHeader(200)
 				io.WriteString(w, value)
 			} else {
+				server.logger.Printf("Key '%s' not found", key)
 				w.WriteHeader(404)
 			}
 		} else {
+			server.logger.Printf("Passing off get of key '%s' to %s", key, destinationAddress)
 			statusCode, response := httpclient.Get(destinationAddress+"/data/"+key, "")
 			w.WriteHeader(statusCode)
 			io.WriteString(w, response)

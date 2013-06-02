@@ -123,6 +123,8 @@ func (peer *Peer) Handler(m *pat.PatternServeMux)  {
 		body, _ := ioutil.ReadAll(request.Body)
 		newPeerURL := string(body)
 
+		peer.logger.Printf("%s requesting to join", newPeerURL)
+
 		if peer.peerExists(newPeerURL) {
 			w.WriteHeader(409)
 		} else {
