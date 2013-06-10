@@ -1,3 +1,122 @@
 # library [![Build Status](https://travis-ci.org/benmills/library.png?branch=master)](https://travis-ci.org/benmills/library)
 
 *Disclaimer*: This project is purely for academic purposes.
+
+## API
+
+I formated the output of some of these commands to make it easier to understand.
+
+### Data
+
+Add new key `mykey` with value `myvalue`. Updating and adding keys works the same way.
+```
+$ curl -v localhost:5000/data/mykey -X PUT -d "myvalue"
+* upload completely sent off: 7 out of 7 bytes
+< HTTP/1.1 201 Created
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 7
+< Date: Fri, 07 Jun 2013 22:35:16 GMT
+<
+myvalue%
+```
+
+Get an existing key
+```
+$ curl -v localhost:5000/data/mykey
+< HTTP/1.1 200 OK
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 7
+< Date: Fri, 07 Jun 2013 22:40:00 GMT
+<
+myvalue%
+```
+
+Get an unknown key
+```
+$ curl -v localhost:5000/data/badkey
+< HTTP/1.1 404 Not Found
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 0
+< Date: Fri, 07 Jun 2013 22:40:28 GMT
+```
+
+### Ring membership
+
+You can ask a node to join with another node
+```
+$ curl -v localhost:5000/peers/join -X PUT -d "http://localhost:5001"
+* upload completely sent off: 1 out of 1 bytes
+< HTTP/1.1 201 Created
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 0
+< Date: Fri, 07 Jun 2013 22:49:21 GMT
+```
+
+Ask two nodes to join which are already joined
+```
+$ curl -v localhost:5000/peers/join -X PUT -d "http://localhost:5001"
+* upload completely sent off: 1 out of 1 bytes
+< HTTP/1.1 409 Conflict
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 0
+< Date: Fri, 07 Jun 2013 22:50:51 GMT
+```
+
+### Stats
+
+you can ask a node for statistics about itself.
+```
+$ curl -v localhost:5000/stats
+< HTTP/1.1 200 OK
+< Content-Type: application/json
+< Content-Length: 145
+< Date: Fri, 07 Jun 2013 22:44:52 GMT
+<
+
+{
+    "nValue": 0,
+    "ring": [
+        "http://localhost:5000",
+        "http://localhost:5002",
+        "http://localhost:5001"
+    ],
+    "vnodeCount": 341,
+    "vnodeSize": 4194303,
+    "vnodeStart": 0
+}
+```
+
+### Settings
+
+#### n value
+The number of nodes a key should be replicated to
+
+Set n to 2
+```
+$ curl -v localhost:5000/settings/n -X PUT -d 2
+* upload completely sent off: 1 out of 1 bytes
+< HTTP/1.1 201 Created
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 0
+< Date: Fri, 07 Jun 2013 22:46:31 GMT
+```
+
+Set n to a value higher than the total amount of nodes (in this case we have 3 nodes):
+```
+$ curl -v localhost:5000/settings/n -X PUT -d 5
+* upload completely sent off: 1 out of 1 bytes
+< Date: Fri, 07 Jun 2013 22:46:31 GMT
+< HTTP/1.1 422 status code 422
+< Content-Type: text/plain; charset=utf-8
+< Content-Length: 0
+< Date: Fri, 07 Jun 2013 22:47:28 GMT
+```
+
+## Private API
+
+There are a number of API endpoints that are used internally and should *not* be used externally unless you really know what you're doing. 
+
+* `PUT /data/set/:key` Set key and value
+* `PUT /peers` Add a node as a peer
+* `PUT /ring` Set the local hashring
+* `GET /stats/keys` Shows count of all keys and a list of all key/value pairs
