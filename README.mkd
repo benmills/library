@@ -9,7 +9,7 @@ I formated the output of some of these commands to make it easier to understand.
 ### Data
 
 Add new key `mykey` with value `myvalue`. Updating and adding keys works the same way.
-```
+```bash
 $ curl -v localhost:5000/data/mykey -X PUT -d "myvalue"
 * upload completely sent off: 7 out of 7 bytes
 < HTTP/1.1 201 Created
@@ -21,7 +21,7 @@ myvalue%
 ```
 
 Get an existing key
-```
+```bash
 $ curl -v localhost:5000/data/mykey
 < HTTP/1.1 200 OK
 < Content-Type: text/plain; charset=utf-8
@@ -32,7 +32,7 @@ myvalue%
 ```
 
 Get an unknown key
-```
+```bash
 $ curl -v localhost:5000/data/badkey
 < HTTP/1.1 404 Not Found
 < Content-Type: text/plain; charset=utf-8
@@ -43,7 +43,7 @@ $ curl -v localhost:5000/data/badkey
 ### Ring membership
 
 You can ask a node to join with another node
-```
+```bash
 $ curl -v localhost:5000/peers/join -X PUT -d "http://localhost:5001"
 * upload completely sent off: 1 out of 1 bytes
 < HTTP/1.1 201 Created
@@ -53,7 +53,7 @@ $ curl -v localhost:5000/peers/join -X PUT -d "http://localhost:5001"
 ```
 
 Ask two nodes to join which are already joined
-```
+```bash
 $ curl -v localhost:5000/peers/join -X PUT -d "http://localhost:5001"
 * upload completely sent off: 1 out of 1 bytes
 < HTTP/1.1 409 Conflict
@@ -65,7 +65,7 @@ $ curl -v localhost:5000/peers/join -X PUT -d "http://localhost:5001"
 ### Stats
 
 you can ask a node for statistics about itself.
-```
+```bash
 $ curl -v localhost:5000/stats
 < HTTP/1.1 200 OK
 < Content-Type: application/json
@@ -92,7 +92,7 @@ $ curl -v localhost:5000/stats
 The number of nodes a key should be replicated to
 
 Set n to 2
-```
+```bash
 $ curl -v localhost:5000/settings/n -X PUT -d 2
 * upload completely sent off: 1 out of 1 bytes
 < HTTP/1.1 201 Created
@@ -102,7 +102,7 @@ $ curl -v localhost:5000/settings/n -X PUT -d 2
 ```
 
 Set n to a value higher than the total amount of nodes (in this case we have 3 nodes):
-```
+```bash
 $ curl -v localhost:5000/settings/n -X PUT -d 5
 * upload completely sent off: 1 out of 1 bytes
 < Date: Fri, 07 Jun 2013 22:46:31 GMT
