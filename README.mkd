@@ -1,6 +1,6 @@
 # library [![Build Status](https://travis-ci.org/benmills/library.png?branch=master)](https://travis-ci.org/benmills/library)
 
-*Disclaimer*: This project is purely for academic purposes.
+*Disclaimer*: This project is purely for academic purposes. [Check out a video](http://www.youtube.com/watch?v=Zb8b4zh0BEg) that shows a few examples of using library.
 
 ## API
 
