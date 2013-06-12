@@ -19,15 +19,17 @@ type Peer struct {
 	ring *hashring.Ring
 	node *hashring.Node
 	logger *log.Logger
+	values map[string]string
 }
 
-func New(url string, logger *log.Logger) *Peer {
+func New(url string, values map[string]string, logger *log.Logger) *Peer {
 	ring := hashring.New()
 	node := ring.AddNode(url)
 
 	return &Peer{
 		Peers: []string{},
 		url: url,
+		values: values,
 		ring: ring,
 		node: node,
 		logger: logger,
@@ -69,6 +71,9 @@ func (peer *Peer) join(newPeer string) {
 	peer.ring.AddNode(newPeer)
 	httpclient.Put(newPeer+"/peers", peer.url)
 
+	nValue := strconv.Itoa(peer.ring.GetNValue())
+	httpclient.Put(newPeer+"/settings/set/n", nValue)
+
 	for _, p := range peer.Peers {
 		nodes := httpclient.JsonData{
 			"ring": peer.ring.GetNodes(),
@@ -76,8 +81,7 @@ func (peer *Peer) join(newPeer string) {
 		httpclient.Put(p+"/ring", nodes.Encode())
 	}
 
-	nValue := strconv.Itoa(peer.ring.GetNValue())
-	httpclient.Put(newPeer+"/settings/set/n", nValue)
+	peer.evaluateKeyOwnership()
 }
 
 func (peer *Peer) HasPeer() bool {
@@ -92,6 +96,16 @@ func (peer *Peer) peerExists(query string) bool {
 	}
 
 	return false
+}
+
+func (peer *Peer) evaluateKeyOwnership() {
+	for key, value := range peer.values {
+		owner := peer.ring.NodeForKey(key)
+		if owner.GetName() != peer.url {
+			httpclient.Put(owner.GetName()+"/data/"+key, value)
+			delete(peer.values, key)
+		}
+	}
 }
 
 func (peer *Peer) Handler(m *pat.PatternServeMux)  {
@@ -116,6 +130,8 @@ func (peer *Peer) Handler(m *pat.PatternServeMux)  {
 
 		peer.ring.SetNodes(data["ring"])
 		peer.node = peer.ring.Get(peer.url)
+
+		peer.evaluateKeyOwnership()
 
 		w.WriteHeader(201)
 	}))

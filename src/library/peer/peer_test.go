@@ -16,7 +16,7 @@ func (NullWriter) Write([]byte) (int, error) { return 0, nil }
 func testNode() *httptest.Server {
 	nullLogger := log.New(new(NullWriter), "", 0)
 	m := pat.New()
-	libraryPeer := New("localhost:someport", nullLogger)
+	libraryPeer := New("localhost:someport", make(map[string]string), nullLogger)
 	libraryPeer.Handler(m)
 	httpServer := httptest.NewServer(m)
 	libraryPeer.SetURL(httpServer.URL)

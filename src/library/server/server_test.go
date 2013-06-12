@@ -140,3 +140,60 @@ func TestReplicationOnPut(t *testing.T) {
 	test.Expect(aHasKey).ToBeTrue()
 	test.Expect(bHasKey).ToBeTrue()
 }
+
+func TestMoveKeys(t *testing.T) {
+	test := quiz.Test(t)
+
+	serverA := testServer()
+	defer serverA.Close()
+	serverB := testServer()
+	defer serverB.Close()
+	serverC := testServer()
+	defer serverC.Close()
+
+	httpclient.Put(serverA.URL+"/peers/join", serverB.URL)
+
+	// this key will first be on server B then will be on server C
+	key := "b"
+
+	httpclient.Put(serverA.URL+"/data/"+key, "foo")
+	httpclient.Put(serverA.URL+"/peers/join", serverC.URL)
+
+	_, bHasKey := serverB.node.values[key]
+	_, cHasKey := serverC.node.values[key]
+
+	test.Expect(bHasKey).ToBeFalse()
+	test.Expect(cHasKey).ToBeTrue()
+}
+
+func TestResizeCleansUpReplicas(t *testing.T) {
+	test := quiz.Test(t)
+
+	serverA := testServer()
+	defer serverA.Close()
+	serverB := testServer()
+	defer serverB.Close()
+	serverC := testServer()
+	defer serverC.Close()
+	serverD := testServer()
+	defer serverD.Close()
+
+	httpclient.Put(serverA.URL+"/peers/join", serverB.URL)
+	httpclient.Put(serverA.URL+"/peers/join", serverC.URL)
+	httpclient.Put(serverA.URL+"/settings/n", "1")
+
+	// this key will be owned by c before and after d joins
+	// however it's replicas will first by a then d
+	key := "a"
+
+	httpclient.Put(serverA.URL+"/data/"+key, "foo")
+	httpclient.Put(serverA.URL+"/peers/join", serverD.URL)
+
+	_, aHasKey := serverA.node.values[key]
+	_, cHasKey := serverC.node.values[key]
+	_, dHasKey := serverD.node.values[key]
+
+	test.Expect(aHasKey).ToBeFalse()
+	test.Expect(cHasKey).ToBeTrue()
+	test.Expect(dHasKey).ToBeTrue()
+}

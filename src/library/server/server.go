@@ -18,8 +18,9 @@ type Server struct {
 }
 
 func New(url string, logger *log.Logger) *Server {
-	peer := peer.New(url, logger)
-	return &Server{peer, make(map[string]string), logger}
+	values := make(map[string]string)
+	peer := peer.New(url, values, logger)
+	return &Server{peer, values, logger}
 }
 
 func (server *Server) Handler() http.Handler {
