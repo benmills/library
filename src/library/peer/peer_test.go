@@ -218,6 +218,33 @@ func TestNodeSetNValueUpdatesPeers(t *testing.T) {
 	test.Expect(body).ToContain(`"nValue":1`)
 }
 
+func TestNodeSetNValueUpdatesPeersOnJoin(t *testing.T) {
+	test := quiz.Test(t)
+
+	nodeA := testNode()
+	defer nodeA.Close()
+	nodeB := testNode()
+	defer nodeB.Close()
+	nodeC := testNode()
+	defer nodeC.Close()
+
+	httpclient.Put(nodeA.URL+"/peers/join", nodeB.URL)
+
+	statusCode, _ := httpclient.Put(nodeA.URL+"/settings/n", "1")
+	test.Expect(statusCode).ToEqual(201)
+
+	httpclient.Put(nodeA.URL+"/peers/join", nodeC.URL)
+
+	_, body := httpclient.Get(nodeA.URL+"/stats", "")
+	test.Expect(body).ToContain(`"nValue":1`)
+
+	_, body = httpclient.Get(nodeB.URL+"/stats", "")
+	test.Expect(body).ToContain(`"nValue":1`)
+
+	_, body = httpclient.Get(nodeC.URL+"/stats", "")
+	test.Expect(body).ToContain(`"nValue":1`)
+}
+
 func TestAddNodeUpdatesRing(t *testing.T) {
 	test := quiz.Test(t)
 	var statusCode int

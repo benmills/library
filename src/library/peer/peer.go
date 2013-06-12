@@ -75,6 +75,9 @@ func (peer *Peer) join(newPeer string) {
 		}
 		httpclient.Put(p+"/ring", nodes.Encode())
 	}
+
+	nValue := strconv.Itoa(peer.ring.GetNValue())
+	httpclient.Put(newPeer+"/settings/set/n", nValue)
 }
 
 func (peer *Peer) HasPeer() bool {
