@@ -23,6 +23,15 @@ func New(url string, logger *log.Logger) *Server {
 	return &Server{peer, values, logger}
 }
 
+func (server *Server) handoffKey(address string, key string, value string) {
+	server.logger.Printf("Passing off '%s'->'%s' to %s", key, value, address)
+
+	statusCode, _ := httpclient.Put(address+"/set/"+key, value)
+	if statusCode == 0 {
+		server.NotifyDown(address)
+	}
+}
+
 func (server *Server) Handler() http.Handler {
 	m := pat.New()
 
@@ -50,8 +59,7 @@ func (server *Server) Handler() http.Handler {
 				server.logger.Printf("Storing '%s'->'%s'", key, value)
 				server.values[key] = value
 			} else {
-				server.logger.Printf("Passing off '%s'->'%s' to %s", key, value, address)
-				httpclient.Put(address+"/set/"+key, value)
+				server.handOffKey(address, key, value)
 			}
 		}
 

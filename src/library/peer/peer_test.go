@@ -10,11 +10,11 @@ import (
 	"library/httpclient"
 )
 
+var nullLogger = log.New(new(NullWriter), "", 0)
 type NullWriter int
 func (NullWriter) Write([]byte) (int, error) { return 0, nil }
 
 func testNode() *httptest.Server {
-	nullLogger := log.New(new(NullWriter), "", 0)
 	m := pat.New()
 	libraryPeer := New("localhost:someport", make(map[string]string), nullLogger)
 	libraryPeer.Handler(m)
@@ -267,4 +267,14 @@ func TestAddNodeUpdatesRing(t *testing.T) {
 	test.Expect(statusCode).ToEqual(200)
 	test.Expect(body).ToContain(`"vnodeCount":512`)
 	test.Expect(body).ToContain(`"vnodeStart":2147483137`)
+}
+
+func TestNotifyDown(t *testing.T) {
+	test := quiz.Test(t)
+
+	peer := New("localhost", map[string]string{}, nullLogger)
+	peer.addPeer("remote")
+	peer.NotifyDown("remote")
+
+	test.Expect(peer.Peers[0]).ToEqual("dead:remote")
 }

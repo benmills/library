@@ -61,6 +61,14 @@ func (peer *Peer) addPeer(newPeer string) {
 	peer.Peers = append(peer.Peers, newPeer)
 }
 
+func (peer *Peer) NotifyDown(downPeer string) {
+	for i, remotePeer := range(peer.Peers) {
+		if remotePeer == downPeer {
+			peer.Peers[i] = "dead:"+downPeer
+		}
+	}
+}
+
 func (peer *Peer) join(newPeer string) {
 	for _, p := range peer.Peers {
 		httpclient.Put(p+"/peers", newPeer)

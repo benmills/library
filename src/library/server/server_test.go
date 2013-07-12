@@ -197,3 +197,21 @@ func TestResizeCleansUpReplicas(t *testing.T) {
 	test.Expect(cHasKey).ToBeTrue()
 	test.Expect(dHasKey).ToBeTrue()
 }
+
+func TestFailedWriteUpdatesPeerList(t *testing.T) {
+	test := quiz.Test(t)
+
+	serverA := testServer()
+	defer serverA.Close()
+	serverB := testServer()
+	peerURL :=  serverB.URL
+
+	key := "a"
+
+	httpclient.Put(serverA.URL+"/peers/join", serverB.URL)
+	serverB.Close()
+	httpclient.Put(serverA.URL+"/data/"+key, "foo")
+
+	_, body := httpclient.Get(serverA.URL+"/peers", "")
+	test.Expect(body).ToContain("dead:"+peerURL)
+}
